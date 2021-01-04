@@ -237,8 +237,7 @@ MouseKey mkeys[] = {
 static char *openurlcmd[] = { "/bin/sh", "-c", "st-urlhandler -o", "externalpipe", NULL };
 static char *copyurlcmd[] = { "/bin/sh", "-c", "st-urlhandler -c", "externalpipe", NULL };
 static char *copyoutput[] = { "/bin/sh", "-c", "st-copyout", "externalpipe", NULL };
-static char *copyemailcmd[] = { "/bin/sh", "-c", "sed 's/.*│//g' | tr -d '\n' | grep -shwoE '([[:alnum:]_.-]+@[[:alnum:]_.-]+?\\.[[:alpha:].]{2,6})' \"$@\" | sort -u | st-emailhandler | dmenu -i -p 'Copy which email?' -l 10 | tr -d '\n' | xclip -selection clipboard",
-	"externalpipe", NULL };
+static char *copyemailcmd[] = { "/bin/sh", "-c", "st-emailhandler", "externalpipe", NULL };
 
 
 
