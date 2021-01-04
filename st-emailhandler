@@ -1,0 +1,6 @@
+#!/bin/sh
+input=$( cat /dev/stdin )
+for str in $input
+do
+	[ $(echo "$input" | grep -c "$str") -eq 1 ] && echo $str
+done

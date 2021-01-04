@@ -5,8 +5,8 @@
  *
  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
  */
-static char *font = "mono:pixelsize=14:antialias=true:autohint=true";
-static char *font2[] = { "JoyPixels:pixelsize=10:antialias=true:autohint=true" };
+static char *font = "mono:pixelsize=32:antialias=true:autohint=true";
+static char *font2[] = { "Inconsolata for Powerline:pixelsize=32:antialias=true:autohint=true" };
 static int borderpx = 2;
 
 /*
@@ -237,6 +237,10 @@ MouseKey mkeys[] = {
 static char *openurlcmd[] = { "/bin/sh", "-c", "st-urlhandler -o", "externalpipe", NULL };
 static char *copyurlcmd[] = { "/bin/sh", "-c", "st-urlhandler -c", "externalpipe", NULL };
 static char *copyoutput[] = { "/bin/sh", "-c", "st-copyout", "externalpipe", NULL };
+static char *copyemailcmd[] = { "/bin/sh", "-c", "sed 's/.*│//g' | tr -d '\n' | grep -shwoE '([[:alnum:]_.-]+@[[:alnum:]_.-]+?\\.[[:alpha:].]{2,6})' \"$@\" | sort -u | st-emailhandler | dmenu -i -p 'Copy which email?' -l 10 | tr -d '\n' | xclip -selection clipboard",
+	"externalpipe", NULL };
+
+
 
 static Shortcut shortcuts[] = {
 	/* mask                 keysym          function        argument */
@@ -274,6 +278,7 @@ static Shortcut shortcuts[] = {
 	{ MODKEY,               XK_l,           externalpipe,   {.v = openurlcmd } },
 	{ MODKEY,               XK_y,           externalpipe,   {.v = copyurlcmd } },
 	{ MODKEY,               XK_o,           externalpipe,   {.v = copyoutput } },
+	{ MODKEY,               XK_z,           externalpipe,   {.v = copyemailcmd} },
 };
 
 /*
