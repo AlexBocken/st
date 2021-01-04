@@ -1,5 +1,5 @@
 #!/bin/sh
-input="$(sed 's/.*│//g' | tr -d '\n' | grep -shwoE '([[:alnum:]_.-]+@[[:alnum:]_.-]+?\.[[:alpha:].]{2,6})' "$@" | sort -u)"
+input="$(sed 's/.*│//g' | tr -d '\n' | grep -oE '([[:alnum:]_.-]+@[[:alnum:]_.-]+?\.[[:alpha:].]{2,6})' "$@" | sort -u)"
 #This loop is required since it would otherwise read <mail>@subdomain.domain.tld as two email addresses (<mail>@subdomain.domain and <mail>@subdomain.domain.tld)
 emails="$(for str in $input; do
 	[ "$(echo "$input" | grep -c "$str")" -eq 1 ] && echo "$str"
