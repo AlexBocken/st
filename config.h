@@ -243,6 +243,7 @@ static char *openurlcmd[] = { "/bin/sh", "-c", "st-urlhandler -o", "externalpipe
 static char *copyurlcmd[] = { "/bin/sh", "-c", "st-urlhandler -c", "externalpipe", NULL };
 static char *copyoutput[] = { "/bin/sh", "-c", "st-copyout", "externalpipe", NULL };
 static char *copyemailcmd[] = { "/bin/sh", "-c", "st-emailhandler", "externalpipe", NULL };
+static char *weechat[] = { "/bin/sh", "-c", "weechatlinks", "externalpipe", NULL };
 
 
 
@@ -283,6 +284,7 @@ static Shortcut shortcuts[] = {
 	{ MODKEY,               XK_y,           externalpipe,   {.v = copyurlcmd } },
 	{ MODKEY,               XK_o,           externalpipe,   {.v = copyoutput } },
 	{ MODKEY,               XK_z,           externalpipe,   {.v = copyemailcmd} },
+	{ MODKEY,               XK_x,           externalpipe,   {.v = weechat } },
 };
 
 /*
