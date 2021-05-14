@@ -1,0 +1,39 @@
+#!/bin/sh
+all="$(perl -pe 's/[^│]*([^│]*?)│/\1/' |
+	perl -pe 's/^.*?\| //' |
+	sed 's/ │.*//' |
+	head -n-3 | tr -d '\n'|
+	grep -aEo '(<[^]>]*>|\[[^ ]*\])' |
+	grep -Ev "<Unable to" )" #filter out <Unable to decrypt:...
+[ -z "$all" ] && exit
+filenames="$( echo "$all" | grep -E '^<[^>]*>' | tr -d '<>')"
+links="$( echo "$all" | grep -E '^\[' | tr -d [])"
+echo "filenames:$filenames"
+echo "links:$links"
+
+
+choice="$(echo "$filenames" | tac | dmenu -i -p 'open which file?' -l 10)"
+[ -z "$choice" ] && exit
+
+#TODO: check for robustness of multifile support
+echo "$choice" | while read -r choiceline; do
+	linenr="$(echo "$filenames" | awk "/$choiceline/ {print NR}")"
+	#TODO: fix this stupid implementation, what if both were selected?
+	if [ "$(echo "$linenr" | wc -l)" -gt 1 ]; then
+		notify-send "weechatdl" "Multiple files by that name, choose by URL"
+		link="$(echo "$links" | tac | dmenu -i -p 'open which file?' -l 10)"
+	fi
+	link="$(echo "$links" | awk "NR==$linenr")"
+
+	echo "link:$link"
+	if [ "$(echo "$link" | wc -l)" -eq 1 ]; then
+		if echo "$link" | grep -qE '^emxc'; then
+			matrix_decrypt.py --plumber rifle "$link"
+		else
+			curl -L "$link" -o "/tmp/$choiceline"
+			rifle "/tmp/$choiceline"
+		fi
+		else
+			notify-send "weechatdls" "multi-link downloads not yet supported"
+	fi
+done
