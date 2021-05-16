@@ -2,7 +2,7 @@
 all="$(perl -pe 's/[^│]*([^│]*?)│/\1/' |
 	perl -pe 's/^.*?\| //' |
 	sed 's/ │.*//' |
-	head -n-3 | tr -d '\n'|
+	head -n-2 | tr -d '\n'|
 	grep -aEo '(<[^]>]*>|\[[^ ]*\])' |
 	grep -Ev "<Unable to" )" #filter out <Unable to decrypt:...
 [ -z "$all" ] && exit
