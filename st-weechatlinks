@@ -4,7 +4,7 @@ all="$(perl -pe 's/[^│]*([^│]*?)│/\1/' |
 	sed 's/ │.*//' |
 	head -n-2 | tr -d '\n'|
 	grep -aEo '(<[^]>]*>|\[[^ ]*\])' |
-	grep -Ev "<Unable to" )" #filter out <Unable to decrypt:...
+	grep -Ev "<(Unable to|Message redacted)" )" #filter out <Unable to decrypt: and <Message redacted by: <user>...
 [ -z "$all" ] && exit
 filenames="$( echo "$all" | grep -E '^<[^>]*>' | tr -d '<>')"
 links="$( echo "$all" | grep -E '^\[' | tr -d [])"
