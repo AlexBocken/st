@@ -20,24 +20,22 @@ echo "$choice" | while read -r choiceline; do
 	linenr="$(echo "$filenames" | awk "/$choiceline/ {print NR}")"
 	#TODO: fix this stupid implementation, what if both were selected?
 	if [ "$(echo "$linenr" | wc -l)" -gt 1 ]; then
-		#if [ "$(echo "$choice" | grep -cE "^$choiceline$")" -eq "$(echo "$linenr" | wc -l)" ]; then
-		#	true
-		#else
-			notify-send "weechatdl" "Multiple files by that name, choose by URL"
-			link="$(echo "$links" | tac | dmenu -i -p 'open which file?' -l 10)"
-		#fi
+		notify-send "weechatdl" "Multiple files by that name, choose by URL"
+		link="$(echo "$links" | tac | dmenu -i -p 'open which file?' -l 10)"
+	else
+		link="$(echo "$links" | awk "NR==$linenr")"
 	fi
-	link="$(echo "$links" | awk "NR==$linenr")"
-
 	echo "link:$link"
 	if [ "$(echo "$link" | wc -l)" -eq 1 ]; then
 		if echo "$link" | grep -qE '^emxc'; then
+			echo Decrypting...
 			matrix_decrypt --plumber rifle "$link" "/tmp/$choiceline"
 		else
+			echo Curling...
 			curl -L "$link" -o "/tmp/$choiceline"
 			rifle "/tmp/$choiceline"
 		fi
-		else
+	else
 			notify-send "weechatdls" "multi-link downloads not yet supported"
 	fi
 done
