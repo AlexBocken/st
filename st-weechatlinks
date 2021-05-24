@@ -11,7 +11,7 @@ links="$( echo "$all" | grep -E '^\[' | tr -d [])"
 echo "filenames:$filenames"
 echo "links:$links"
 
-
+[ -z "$filenames" ] && exit
 choice="$(echo "$filenames" | tac | dmenu -i -p 'open which file?' -l 10)"
 [ -z "$choice" ] && exit
 
