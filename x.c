@@ -834,7 +834,7 @@ xloadcolor(int i, const char *name, Color *ncolor)
 void
 xloadalpha(void)
 {
-	float const usedAlpha = focused ? alpha : alphaUnfocus;
+	float const usedAlpha = alpha;
 	if (opt_alpha) alpha = strtof(opt_alpha, NULL);
 	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * usedAlpha);
 	dc.col[defaultbg].pixel &= 0x00FFFFFF;
