@@ -1,0 +1,84 @@
+#!/bin/sh
+# A script to automatically detect links and weechat-matrix files.
+# Opens dmenuhandler for selected links,
+# decrypts and rifles selected weechat-matrix files.
+
+buffer="$(cat)"
+#URLs:
+urlregex="(((http|https|gopher|gemini|ftp|ftps|git)://|www\\.)[a-zA-Z0-9.]*[:]?[a-zA-Z0-9./@$&%?$\!\#=_~-]*)|((magnet:\\?xt=urn:btih:)[a-zA-Z0-9]*)"
+
+urls="$(echo "$buffer" | sed 's/.*│//g' | tr -d '\n' | # First remove linebreaks and mutt sidebars:
+	grep -aEo "$urlregex" | # grep only urls as defined above.
+	awk '!seen[$0]++' | # Ignore duplicates but keep order of links
+	sed 's/^www./http:\/\/www\./g')" # xdg-open will not detect url without http://
+
+#Weechat-matrix files:
+all="$(echo "$buffer" | perl -pe 's/[^│]*([^│]*?)│/\1/' |
+	perl -pe 's/^.*?\| //' |
+	sed 's/ │.*//' |
+	head -n-2 | tr -d '\n'|
+	grep -aEo '(<[^]><]*> |\[[^]]*:\/\/[^]]*\])' |
+	grep -Ev "<(Unable to|Message redacted)" )" #filter out <Unable to decrypt: and <Message redacted by: <user>...
+
+
+[ -z "$all" ] && [ -z "$urls" ] && exit;
+
+filenames="$( echo "$all" | sed -n '/\[*\]/{g;1!p};h' | tr -d '<>')"
+links="$( echo "$all" | grep -E '^\[' | tr -d [])"
+#Debugging:
+#echo "filenames:$filenames"
+#echo "links:$links"
+#echo "urls:$urls"
+if [ -n "$filenames" ]; then
+	selection="$( echo "$filenames" | tac)"
+	prompt="file"
+	if [ -n "$urls" ]; then
+		selection="$(printf "%s\n%s\n" "$selection" "$urls")"
+		prompt="file/link"
+	fi
+elif [ -n "$urls" ]; then
+	selection="$urls"
+	prompt="link"
+else
+	exit
+fi
+
+choice="$(echo "$selection" | dmenu -i -p "open which $prompt?" -l 10)"
+[ -z "$choice" ] && exit
+
+#TODO: check for robustness of multifile support
+echo "$choice" | tac | while read -r choiceline; do
+	#open dmenuhandler for URLs
+	if echo "$urls" | grep -q "^$choiceline$"; then
+		dmenuhandler "$choiceline"
+	#decrypt and open weechat-matrix files
+	else
+		linenr="$(echo "$filenames" | awk "/$choiceline/ {print NR}")"
+		#TODO: fix this stupid implementation, what if both were selected?
+		if [ "$(echo "$linenr" | wc -l)" -gt 1 ]; then
+			notify-send "weechatdl" "Multiple files by that name, choose by URL"
+			link="$(echo "$links" | tac | dmenu -i -p 'open which file?' -l 10)"
+		else
+			link="$(echo "$links" | awk "NR==$linenr")"
+		fi
+		echo "link:$link"
+		if [ "$(echo "$link" | wc -l)" -eq 1 ]; then
+			if echo "$link" | grep -qE '^emxc'; then
+				matrix_decrypt "$link" "/tmp/$choiceline"
+			else
+				curl -L "$link" -o "/tmp/$choiceline"
+			fi
+			## OPENING OF FILE
+			# assume EDITOR to be terminal based
+			# thus open in new terminal instance.
+			if rifle -l "/tmp/$choiceline" | head -n1 | grep -qE '(EDITOR|PAGER)';then
+				${TERMINAL:-st} rifle "/tmp/$choiceline" &
+			else
+				rifle "/tmp/$choiceline"
+			fi
+
+		else
+				notify-send "weechatdls" "multi-link downloads not yet supported"
+		fi
+	fi
+done
