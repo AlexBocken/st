@@ -238,6 +238,10 @@ static int iofd = 1;
 static int cmdfd;
 static pid_t pid;
 
+/* OSC7 working directory tracking */
+static char *osc7_cwd = NULL;
+static char *ssh_connection = NULL;
+
 static const uchar utfbyte[UTF_SIZ + 1] = {0x80,    0, 0xC0, 0xE0, 0xF0};
 static const uchar utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
 static const Rune utfmin[UTF_SIZ + 1] = {       0,    0,  0x80,  0x800,  0x10000};
@@ -1086,10 +1090,112 @@ tswapscreen(void)
 	tfulldirt();
 }
 
+static void
+handle_osc7(char *uri)
+{
+	char *path, *host, *user, *at_pos;
+
+	/* OSC7 format: file://[user@]hostname/path or file:///path */
+	if (strncmp(uri, "file://", 7) != 0)
+		return;
+
+	uri += 7;
+
+	/* Extract hostname and path */
+	path = strchr(uri, '/');
+	if (!path) {
+		/* No path part, whole thing is hostname */
+		host = xstrdup(uri);
+		path = "/";
+	} else {
+		/* Split hostname and path */
+		host = xmalloc(path - uri + 1);
+		memcpy(host, uri, path - uri);
+		host[path - uri] = '\0';
+		/* path already points to the '/', which is what we want */
+	}
+
+	/* Store working directory */
+	if (osc7_cwd)
+		free(osc7_cwd);
+	osc7_cwd = xstrdup(path);
+
+	/* Parse user@hostname format and store SSH connection info */
+	if (host && *host && strcmp(host, "localhost") != 0) {
+		if (ssh_connection)
+			free(ssh_connection);
+
+		/* Check if hostname contains user@ prefix */
+		at_pos = strchr(host, '@');
+		if (at_pos) {
+			/* user@hostname format - use as-is */
+			ssh_connection = xstrdup(host);
+		} else {
+			/* hostname only - try to get current user from environment */
+			user = getenv("USER");
+			if (!user)
+				user = getenv("LOGNAME");
+			if (!user)
+				user = "root";
+
+			ssh_connection = xmalloc(strlen(user) + strlen(host) + 2);
+			sprintf(ssh_connection, "%s@%s", user, host);
+		}
+	} else {
+		if (ssh_connection) {
+			free(ssh_connection);
+			ssh_connection = NULL;
+		}
+	}
+
+	/* Clean up allocated host string if we allocated it */
+	if (path != "/" && host)
+		free(host);
+}
+
+static char *
+shell_escape(const char *str)
+{
+	const char *p;
+	char *escaped, *q;
+	size_t len = 0;
+
+	/* Count characters that need escaping */
+	for (p = str; *p; p++) {
+		if (*p == '\'')
+			len += 4; /* Replace ' with '\'' */
+		else
+			len += 1;
+	}
+
+	escaped = xmalloc(len + 3); /* +2 for surrounding quotes, +1 for null */
+	q = escaped;
+	*q++ = '\'';
+
+	for (p = str; *p; p++) {
+		if (*p == '\'') {
+			/* Replace single quote with '\'' */
+			*q++ = '\'';
+			*q++ = '\\';
+			*q++ = '\'';
+			*q++ = '\'';
+		} else {
+			*q++ = *p;
+		}
+	}
+
+	*q++ = '\'';
+	*q = '\0';
+
+	return escaped;
+}
+
 void
 newterm(const Arg* a)
 {
 	int res;
+	char **args;
+
 	switch (fork()) {
 	case -1:
 		die("fork failed: %s\n", strerror(errno));
@@ -1100,7 +1206,38 @@ newterm(const Arg* a)
 			die("fork failed: %s\n", strerror(errno));
 			break;
 		case 0:
-			chdir_by_pid(pid);
+			/* If we have OSC7 directory info and SSH connection, launch new st with SSH */
+			if (osc7_cwd && ssh_connection) {
+				/* Build the SSH command to change to the remote directory, with fallback */
+				char *escaped_path = shell_escape(osc7_cwd);
+				size_t cmdlen = strlen(ssh_connection) + strlen(escaped_path) + strlen("ssh -t  \"cd  2>/dev/null || cd ~ ; exec $SHELL\"") + 50;
+				char *ssh_cmd = xmalloc(cmdlen);
+				snprintf(ssh_cmd, cmdlen, "ssh -t %s \"cd %s 2>/dev/null || cd ~ ; exec $SHELL\"", ssh_connection, escaped_path);
+				free(escaped_path);
+
+				args = xmalloc(6 * sizeof(char*));
+				args[0] = argv0;  /* Launch new st */
+				args[1] = "-e";   /* Execute command */
+				args[2] = "sh";   /* Use shell to execute */
+				args[3] = "-c";   /* Command follows */
+				args[4] = ssh_cmd;
+				args[5] = NULL;
+
+				execvp("/proc/self/exe", args);
+				/* If exec fails, fall back to local terminal */
+				fprintf(stderr, "failed to launch new st with ssh, falling back to local terminal\n");
+			}
+
+			/* Local terminal: use OSC7 directory if available, otherwise use pid method */
+			if (osc7_cwd) {
+				if (chdir(osc7_cwd) != 0) {
+					/* If OSC7 directory doesn't exist, fall back to pid method */
+					chdir_by_pid(pid);
+				}
+			} else {
+				chdir_by_pid(pid);
+			}
+
 			execlp("/proc/self/exe", argv0, NULL);
 			exit(1);
 			break;
@@ -2021,6 +2158,11 @@ strhandle(void)
 					fprintf(stderr, "erresc: invalid base64\n");
 				}
 			}
+			return;
+		case 7:
+			/* OSC7 - working directory notification */
+			if (narg > 1)
+				handle_osc7(strescseq.args[1]);
 			return;
 		case 10:
 		case 11:
