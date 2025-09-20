@@ -126,6 +126,9 @@ typedef struct {
 	Line hist[HISTSIZE]; /* history buffer */
 	int histi;    /* history index */
 	int scr;      /* scroll back */
+	int hscr;     /* horizontal scroll offset */
+	int *linelen; /* actual length of each line */
+	int *histlen; /* actual length of each history line */
 	int *dirty;   /* dirtyness of lines */
 	TCursor c;    /* cursor */
 	int ocx;      /* old cursor col */
@@ -1289,6 +1292,52 @@ kscrollup(const Arg* a)
 }
 
 void
+hscrollleft(const Arg* a)
+{
+	int n = a->i;
+	int maxscroll = 0;
+	int i;
+
+	if (n < 0)
+		n = term.col + n;
+
+	/* find maximum horizontal scroll based on line lengths */
+	if (term.scr == 0) {
+		/* scrolling current screen */
+		for (i = 0; i < term.row; i++) {
+			if (term.linelen[i] > maxscroll)
+				maxscroll = term.linelen[i];
+		}
+	} else {
+		/* scrolling history */
+		for (i = 0; i < HISTSIZE; i++) {
+			if (term.histlen[i] > maxscroll)
+				maxscroll = term.histlen[i];
+		}
+	}
+
+	maxscroll = MAX(0, maxscroll - term.col);
+	if (term.hscr < maxscroll) {
+		term.hscr = MIN(term.hscr + n, maxscroll);
+		tfulldirt();
+	}
+}
+
+void
+hscrollright(const Arg* a)
+{
+	int n = a->i;
+
+	if (n < 0)
+		n = term.col + n;
+
+	if (term.hscr > 0) {
+		term.hscr = MAX(0, term.hscr - n);
+		tfulldirt();
+	}
+}
+
+void
 tscrolldown(int orig, int n, int copyhist)
 {
 	int i;
@@ -1468,6 +1517,10 @@ tsetchar(Rune u, const Glyph *attr, int x, int y)
 	term.dirty[y] = 1;
 	term.line[y][x] = *attr;
 	term.line[y][x].u = u;
+
+	/* update line length tracking */
+	if (x + 1 > term.linelen[y])
+		term.linelen[y] = x + 1;
 
 	if (isboxdraw(u))
 		term.line[y][x].mode |= ATTR_BOXDRAW;
@@ -2882,18 +2935,25 @@ tresize(int col, int row)
 	term.alt  = xrealloc(term.alt,  row * sizeof(Line));
 	term.dirty = xrealloc(term.dirty, row * sizeof(*term.dirty));
 	term.tabs = xrealloc(term.tabs, col * sizeof(*term.tabs));
+	term.linelen = xrealloc(term.linelen, row * sizeof(*term.linelen));
+	term.histlen = xrealloc(term.histlen, HISTSIZE * sizeof(*term.histlen));
 
+	/* preserve history line lengths and resize history buffer */
 	for (i = 0; i < HISTSIZE; i++) {
-		term.hist[i] = xrealloc(term.hist[i], col * sizeof(Glyph));
+		if (!term.histlen[i])
+			term.histlen[i] = term.maxcol;
+		term.hist[i] = xrealloc(term.hist[i], MAX(col, term.histlen[i]) * sizeof(Glyph));
 		for (j = mincol; j < col; j++) {
 			term.hist[i][j] = term.c.attr;
 			term.hist[i][j].u = ' ';
 		}
 	}
 
-	/* resize each row to new width, zero-pad if needed */
+	/* resize each row to new width, preserve line lengths */
 	for (i = 0; i < minrow; i++) {
-		term.line[i] = xrealloc(term.line[i], col * sizeof(Glyph));
+		if (!term.linelen[i])
+			term.linelen[i] = term.maxcol;
+		term.line[i] = xrealloc(term.line[i], MAX(col, term.linelen[i]) * sizeof(Glyph));
 		term.alt[i]  = xrealloc(term.alt[i],  col * sizeof(Glyph));
 	}
 
@@ -2901,6 +2961,7 @@ tresize(int col, int row)
 	for (/* i = minrow */; i < row; i++) {
 		term.line[i] = xmalloc(col * sizeof(Glyph));
 		term.alt[i] = xmalloc(col * sizeof(Glyph));
+		term.linelen[i] = col;
 	}
 	if (col > term.maxcol) {
 		bp = term.tabs + term.maxcol;
@@ -2944,13 +3005,32 @@ void
 drawregion(int x1, int y1, int x2, int y2)
 {
 	int y;
+	Line line;
+	int hx1, hx2, linelen;
 
 	for (y = y1; y < y2; y++) {
 		if (!term.dirty[y])
 			continue;
 
 		term.dirty[y] = 0;
-		xdrawline(TLINE(y), x1, y, x2);
+		line = TLINE(y);
+
+		/* get line length based on whether we're in history or current screen */
+		if (y < term.scr) {
+			/* history line */
+			int histidx = ((y + term.histi - term.scr + HISTSIZE + 1) % HISTSIZE);
+			linelen = term.histlen[histidx];
+		} else {
+			/* current screen line */
+			linelen = term.linelen[y - term.scr];
+		}
+
+		/* apply horizontal scroll offset */
+		if (term.hscr >= linelen)
+			continue;
+
+		/* draw from horizontally scrolled position */
+		xdrawline(&line[term.hscr], x1, y, MIN(x2, linelen - term.hscr));
 	}
 }
 
