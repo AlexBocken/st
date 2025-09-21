@@ -8,7 +8,7 @@ Based on [Luke Smith's build](https://github.com/LukeSmithxyz/st) of the [suckle
 + **copy urls** in the same way with `alt-y`
 + **copy the output of commands** with `alt-o`
 + **enhanced link handler** by pressing `alt-x` - `st-linkhandler` script for advanced URL and file handling with weechat-matrix support
-+ **OSC7 remote newterm support** - open new terminal in current working directory when using SSH
++ **OSC7 remote newterm support** - open new terminal in current working directory when using SSH (see [README-OSC7-SSH.md](README-OSC7-SSH.md) for setup and usage)
 
 ## Bindings for
 
