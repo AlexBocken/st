@@ -1,18 +1,20 @@
-# Luke's build of st - the simple (suckless) terminal
+# Alex's build of st - the simple (suckless) terminal
 
-The [suckless terminal (st)](https://st.suckless.org/) with some additional
-features that make it literally the best terminal emulator ever:
+Based on [Luke Smith's build](https://github.com/LukeSmithxyz/st) of the [suckless terminal (st)](https://st.suckless.org/) with additional features that make it literally the best terminal emulator ever:
 
 ## Unique features (using dmenu)
 
 + **follow urls** by pressing `alt-l`
 + **copy urls** in the same way with `alt-y`
 + **copy the output of commands** with `alt-o`
++ **enhanced link handler** by pressing `alt-x` - `st-linkhandler` script for advanced URL and file handling with weechat-matrix support
++ **OSC7 remote newterm support** - open new terminal in current working directory when using SSH
 
 ## Bindings for
 
 + **scrollback** with `alt-↑/↓` or `alt-pageup/down` or `shift` while scrolling the
   mouse.
++ **horizontal scrollback** - no data loss on resize, preserves terminal content
 + OR **vim-bindings**: scroll up/down in history with `alt-k` and `alt-j`.
   Faster with `alt-u`/`alt-d`.
 + **zoom/change font size**: same bindings as above, but holding down shift as
