@@ -8,13 +8,13 @@ Based on [Luke Smith's build](https://github.com/LukeSmithxyz/st) of the [suckle
 + **copy urls** in the same way with `alt-y`
 + **copy the output of commands** with `alt-o`
 + **enhanced link handler** by pressing `alt-x` - `st-linkhandler` script for advanced URL and file handling with weechat-matrix support
-+ **OSC7 remote newterm support** - open new terminal in current working directory when using SSH (see [README-OSC7-SSH.md](README-OSC7-SSH.md) for setup and usage)
++ **new terminal in same directory** by pressing `alt-enter` - opens new terminal in current working directory with remote support
 
 ## Bindings for
 
 + **scrollback** with `alt-↑/↓` or `alt-pageup/down` or `shift` while scrolling the
   mouse.
-+ **horizontal scrollback** - no data loss on resize, preserves terminal content
++ **horizontal and vertical scrollback** - preserves all terminal content, no data loss on resize
 + OR **vim-bindings**: scroll up/down in history with `alt-k` and `alt-j`.
   Faster with `alt-u`/`alt-d`.
 + **zoom/change font size**: same bindings as above, but holding down shift as
@@ -34,6 +34,7 @@ Based on [Luke Smith's build](https://github.com/LukeSmithxyz/st) of the [suckle
 + Boxdraw
 + Ligatures
 + font2
++ OSC7 remote newterm support - open new terminal in current working directory when using SSH (see [README-OSC7-SSH.md](README-OSC7-SSH.md) for setup and usage)
 + updated to latest version 0.8.5
 
 ## Installation for newbs
