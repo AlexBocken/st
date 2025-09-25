@@ -3030,7 +3030,13 @@ drawregion(int x1, int y1, int x2, int y2)
 			continue;
 
 		/* draw from horizontally scrolled position */
-		xdrawline(&line[term.hscr], x1, y, MIN(x2, linelen - term.hscr));
+		/* ensure we draw at least the visible width, limited by actual line content */
+		int visible_width = MIN(x2, linelen - term.hscr);
+		if (visible_width < x2 && linelen > term.hscr) {
+			/* if line extends beyond what we calculated, draw more */
+			visible_width = MIN(x2, MAX(visible_width, term.col));
+		}
+		xdrawline(&line[term.hscr], x1, y, visible_width);
 	}
 }
 
